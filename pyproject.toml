@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "watch-video"
+version = "0.1.0"
+description = "MCP server and Claude skill that let an AI watch videos: timestamped transcript plus scene-selected keyframes, from local files or any yt-dlp URL."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Marwan Mahmoud" }]
+keywords = ["mcp", "claude", "video", "transcription", "keyframes", "yt-dlp", "parakeet", "whisper"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Multimedia :: Video",
+]
+dependencies = [
+    "mcp>=1.2",
+    "yt-dlp",
+    "numpy",
+    "pillow",
+    "onnx-asr[cpu,hub]>=0.10",
+]
+
+[project.optional-dependencies]
+whisper = ["faster-whisper>=1.0"]
+dev = ["pytest>=8", "ruff"]
+
+[project.urls]
+Homepage = "https://github.com/marwanm7moud/watch-video"
+Issues = "https://github.com/marwanm7moud/watch-video/issues"
+
+[project.scripts]
+video-mcp = "video_mcp.server:main"
+video-cli = "video_mcp.cli:main"
+
+[tool.setuptools]
+packages = ["video_mcp"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
