@@ -22,14 +22,17 @@ def _out(r):
 
 
 @mcp.tool()
-def video_overview(source: str, max_frames: int = 40, engine: str = "auto", language: str | None = None):
+def video_overview(source: str, max_frames: int = 40, engine: str = "auto", language: str | None = None,
+                   ocr: bool = False):
     """START HERE for any video. `source` = local file path or URL (YouTube + 1500 sites).
     Returns metadata, chapters, full timestamped transcript and contact sheets of scene-selected
     keyframes (timestamp in each cell). engine: auto|subs|parakeet|whisper. language: 'en' (default),
-    another ISO code, or 'auto' to detect (non-English uses Whisper, which is heavy on CPU).
+    another ISO code, or 'auto' to detect. Parakeet (fast on CPU) covers 25 European languages; others
+    (Arabic, Chinese, Japanese, Hindi...) use Whisper, which is heavy on CPU.
     Cached: repeat calls are instant. First run on CPU without subtitles can take a few minutes
-    for long videos."""
-    return _out(core.overview(source, max_frames, engine, language))
+    for long videos. ocr=True also returns the text visible on screen (code, slides, UI) as text; needs
+    the watch-video[ocr] extra."""
+    return _out(core.overview(source, max_frames, engine, language, ocr))
 
 
 @mcp.tool()
@@ -54,7 +57,8 @@ def get_transcript(source: str, start: str = "0", end: str | None = None):
 
 @mcp.tool()
 def search_transcript(source: str, query: str):
-    """Find where words are spoken. Returns timestamped hits with context."""
+    """Find where words are spoken, best matches (exact phrase) first. Returns timestamped hits with context.
+    Also lists matching on-screen text if video_overview ran with ocr=True."""
     return core.search_transcript(source, query)["text"]
 
 

@@ -1,11 +1,10 @@
 """High-level operations shared by the MCP server and the CLI."""
 import os
-import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 
 from . import frames as fr
-from . import hw
+from . import hw, ocr
 from .source import Video
 from .transcribe import as_text, fmt_ts, transcribe
 
@@ -19,8 +18,9 @@ def get_video(src):
     return _videos[src]
 
 
-def overview(src, max_frames=40, engine="auto", language=None):
-    """Metadata + full transcript + contact sheets. Transcription and frame scan run in parallel."""
+def overview(src, max_frames=40, engine="auto", language=None, with_ocr=False):
+    """Metadata + full transcript + contact sheets. Transcription and frame scan run in parallel.
+    with_ocr adds the on-screen text read from each keyframe."""
     t0 = time.time()
     v = get_video(src)
     meta = v.meta()
@@ -50,7 +50,11 @@ def overview(src, max_frames=40, engine="auto", language=None):
     head.append(f"keyframes: {len(kf)} scene-selected at " + ", ".join(fmt_ts(t) for t, _ in kf))
     head.append(f"contact sheets: {len(sheets)} (timestamp in each cell's top-left)")
     head.append(f"total time: {time.time() - t0:.1f}s")
-    return {"text": "\n".join(head) + "\n\n## Transcript\n" + (text or "(no speech)"), "images": sheets,
+    body = "\n".join(head) + "\n\n## Transcript\n" + (text or "(no speech)")
+    if with_ocr:
+        screen = ocr.format_ocr(ocr.screen_text(v, [t for t, _ in kf]))
+        body += "\n\n## On-screen text (OCR, new lines per keyframe)\n" + (screen or "(none detected)")
+    return {"text": body, "images": sheets,
             "timings": {"transcribe_s": tr.get("seconds"), "total_s": round(time.time() - t0, 1)}}
 
 
@@ -96,16 +100,30 @@ def get_transcript(src, start=0, end=None, engine="auto", language=None):
     return {"text": as_text(segs) or "(no speech in range)", "images": []}
 
 
+def _score(text, phrase, words):
+    """Exact phrase beats any partial match; then more of the words beats fewer."""
+    t = text.lower()
+    return (phrase in t) * len(words) + sum(w in t for w in words)
+
+
 def search_transcript(src, query, context=1):
-    """Case-insensitive search (any of the space-separated words). Returns hits with neighbours."""
+    """Case-insensitive search (any of the space-separated words), best matches first. Returns hits with
+    neighbours, plus on-screen text hits when an `overview --ocr` has run for this video."""
     v = get_video(src)
     segs = transcribe(v)["segments"]
-    words = [w for w in re.split(r"\s+", query.lower()) if w]
-    hits = [i for i, s in enumerate(segs) if any(w in s["text"].lower() for w in words)]
+    phrase = " ".join(query.lower().split())
+    words = phrase.split()
+    scores = [_score(s["text"], phrase, words) for s in segs]
+    hits = sorted((i for i, sc in enumerate(scores) if sc), key=lambda i: (-scores[i], i))
     blocks, seen = [], set()
     for i in hits[:30]:
         rng = [j for j in range(i - context, i + context + 1) if 0 <= j < len(segs) and j not in seen]
         seen.update(rng)
-        blocks.append("\n".join(f"[{fmt_ts(segs[j]['start'])}] {segs[j]['text']}" for j in rng))
-    return {"text": f"{len(hits)} hits for '{query}'\n\n" + "\n---\n".join(blocks) if hits
-            else f"no hits for '{query}'", "images": []}
+        if rng:
+            blocks.append("\n".join(f"[{fmt_ts(segs[j]['start'])}] {segs[j]['text']}" for j in rng))
+    text = (f"{len(hits)} hits for '{query}' (best first)\n\n" + "\n---\n".join(blocks) if hits
+            else f"no hits for '{query}'")
+    screen = [(t, ln) for t, lines in ocr.cached(v) for ln in lines if _score(ln, phrase, words)]
+    if screen:
+        text += "\n\n## On screen (OCR keyframes)\n" + "\n".join(f"[{fmt_ts(t)}] {ln}" for t, ln in screen[:30])
+    return {"text": text, "images": []}

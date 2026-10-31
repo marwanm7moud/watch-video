@@ -1,3 +1,6 @@
+import json
+from types import SimpleNamespace
+
 import pytest
 
 from video_mcp.core import parse_ts, search_transcript
@@ -27,11 +30,31 @@ def test_as_text_merges_close_fragments_only():
     assert as_text(segs) == "[00:00] hello world\n[00:10] later"
 
 
-def test_search_transcript_matches_any_word(monkeypatch):
-    segs = [{"start": i * 5, "end": i * 5 + 4, "text": t} for i, t in enumerate(["intro", "buy gold", "outro"])]
-    monkeypatch.setattr("video_mcp.core.get_video", lambda src: None)
+def _fake_video(monkeypatch, tmp_path, texts):
+    segs = [{"start": i * 5, "end": i * 5 + 4, "text": t} for i, t in enumerate(texts)]
+    monkeypatch.setattr("video_mcp.core.get_video", lambda src: SimpleNamespace(dir=str(tmp_path)))
     monkeypatch.setattr("video_mcp.core.transcribe", lambda v: {"segments": segs})
+
+
+def test_search_transcript_matches_any_word(monkeypatch, tmp_path):
+    _fake_video(monkeypatch, tmp_path, ["intro", "buy gold", "outro"])
     out = search_transcript("x", "GOLD silver")["text"]
     assert out.startswith("1 hits")
     assert "[00:05] buy gold" in out
     assert search_transcript("x", "nothing")["text"] == "no hits for 'nothing'"
+
+
+def test_search_transcript_ranks_exact_phrase_first(monkeypatch, tmp_path):
+    texts = ["stop here", "a", "b", "loss only", "c", "d", "set the stop loss now", "e", "f", "stop and loss"]
+    _fake_video(monkeypatch, tmp_path, texts)
+    out = search_transcript("x", "Stop  Loss", context=0)["text"]
+    order = [out.index(t) for t in ["stop loss now", "stop and loss", "stop here", "loss only"]]
+    assert order == sorted(order)
+
+
+def test_search_transcript_includes_cached_ocr(monkeypatch, tmp_path):
+    _fake_video(monkeypatch, tmp_path, ["intro"])
+    (tmp_path / "ocr.json").write_text(json.dumps({"65.00": ["Error: disk full"], "3.00": ["Welcome"]}))
+    out = search_transcript("x", "error")["text"]
+    assert "no hits for 'error'" in out
+    assert "## On screen (OCR keyframes)\n[01:05] Error: disk full" in out

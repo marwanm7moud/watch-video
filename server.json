@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.marwanm7moud/watch-video",
+  "title": "Watch Video",
+  "description": "Let an AI watch a video: timestamped transcript, scene-selected keyframes and exact frames. Local.",
+  "repository": {
+    "url": "https://github.com/marwanm7moud/watch-video",
+    "source": "github"
+  },
+  "version": "0.2.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "watch-video",
+      "version": "0.2.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

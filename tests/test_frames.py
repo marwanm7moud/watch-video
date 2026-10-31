@@ -42,3 +42,25 @@ def test_scan_extract_and_contact_sheet(clip, tmp_path):
     assert max(Image.open(out[0][1]).size) == 256
     sheets = fr.contact_sheets(out, str(tmp_path / "s"))
     assert len(sheets) == 1
+
+
+def test_is_sparse():
+    assert fr.is_sparse(2, 600, 40)  # 10-min screencast with 2 keyframes
+    assert not fr.is_sparse(3, 19, 8)  # short clip: few keyframes are fine
+    assert not fr.is_sparse(60, 600, 40)
+
+
+def test_sparse_keyframes_fall_back_to_timed_samples(tmp_path):
+    try:
+        ffmpeg = find_bin("ffmpeg")
+    except FileNotFoundError:
+        pytest.skip("ffmpeg not installed")
+    path = str(tmp_path / "long_gop.mp4")
+    # one keyframe for the whole 60 s clip, like a screen recording
+    subprocess.run([ffmpeg, "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=160x120:rate=5:duration=60",
+                    "-g", "9999", "-keyint_min", "9999", "-sc_threshold", "0", "-pix_fmt", "yuv420p", path],
+                   check=True)
+    assert len(fr.scan_keyframes(path)) <= 2
+    frames = fr.scan(path, 60, 40)
+    assert len(frames) >= 20
+    assert len(fr.select(frames, 60, max_frames=10)) >= 5

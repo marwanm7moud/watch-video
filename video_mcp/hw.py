@@ -33,6 +33,15 @@ def cuda_devices():
 
 
 @functools.lru_cache(None)
+def ocr_available():
+    try:
+        import rapidocr_onnxruntime  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+@functools.lru_cache(None)
 def parakeet_available():
     try:
         import onnx_asr  # noqa: F401
@@ -115,6 +124,7 @@ def report():
         f"ffmpeg: {ver('ffmpeg')}",
         f"ffprobe: {ver('ffprobe')}",
         f"Parakeet (onnx-asr): {'yes' if parakeet_available() else 'no'}",
+        f"OCR (rapidocr): {'yes' if ocr_available() else 'no (pip install watch-video[ocr])'}",
         f"Profile: {p}",
     ]
     return "\n".join(lines)

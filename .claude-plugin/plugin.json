@@ -1,0 +1,20 @@
+{
+  "name": "watch-video",
+  "displayName": "Watch Video",
+  "version": "0.2.0",
+  "description": "Let Claude watch a video (local file or YouTube and 1500+ sites): timestamped transcript, scene-selected keyframes and exact frames on demand. Fully local, no API keys.",
+  "author": {
+    "name": "Marwan Mahmoud",
+    "url": "https://github.com/marwanm7moud"
+  },
+  "homepage": "https://github.com/marwanm7moud/watch-video",
+  "repository": "https://github.com/marwanm7moud/watch-video",
+  "license": "MIT",
+  "keywords": ["video", "youtube", "transcript", "keyframes", "ocr", "mcp"],
+  "mcpServers": {
+    "video": {
+      "command": "uvx",
+      "args": ["--from", "watch-video", "video-mcp"]
+    }
+  }
+}

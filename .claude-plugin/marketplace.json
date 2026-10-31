@@ -1,0 +1,15 @@
+{
+  "name": "watch-video",
+  "description": "Let Claude watch videos: transcript, keyframes and exact frames, fully local.",
+  "owner": {
+    "name": "Marwan Mahmoud",
+    "url": "https://github.com/marwanm7moud"
+  },
+  "plugins": [
+    {
+      "name": "watch-video",
+      "source": "./",
+      "description": "MCP server and skill that let Claude watch a video from a local file or any yt-dlp URL."
+    }
+  ]
+}

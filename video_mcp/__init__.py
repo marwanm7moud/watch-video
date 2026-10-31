@@ -1,7 +1,7 @@
 """video_mcp: let Claude "watch" videos via transcripts + smart keyframes."""
 import os
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 # HF's Xet transfer can stall model downloads on some networks; plain HTTPS is reliable.
 os.environ.setdefault("HF_HUB_DISABLE_XET", "1")

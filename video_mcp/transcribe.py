@@ -1,4 +1,4 @@
-"""Transcription: platform subs > Parakeet (English, CPU) > faster-whisper large-v3-turbo."""
+"""Transcription: platform subs > Parakeet (25 European languages, CPU) > faster-whisper large-v3-turbo."""
 import json
 import os
 import time
@@ -6,6 +6,10 @@ import time
 from .hw import profile
 
 _models = {}
+
+# Languages Parakeet TDT 0.6B v3 transcribes (it detects which one by itself); anything else goes to Whisper.
+PARAKEET_LANGS = {"bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt",
+                  "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"}
 
 
 def fmt_ts(s):
@@ -89,10 +93,10 @@ def transcribe(video, engine="auto", language=None):
         else:
             wav = video.audio_file()
             prompt = " ".join(filter(None, [meta.get("title"), (meta.get("description") or "")[:300]]))
-            # English is assumed (no Whisper load just to detect); pass language="auto" to detect.
+            # The given language is trusted (no Whisper load just to detect); pass language="auto" to detect.
             lang, prob = _detect_language(wav) if language == "auto" else (language, 1.0)
             use_parakeet = engine == "parakeet" or (
-                engine == "auto" and profile()["parakeet"] and lang == "en" and prob > 0.8)
+                engine == "auto" and profile()["parakeet"] and lang in PARAKEET_LANGS and prob > 0.8)
             if use_parakeet:
                 # No silent Whisper fallback on CPU: it is far heavier and can freeze a desktop.
                 res = {"segments": _run_parakeet(wav), "engine": "parakeet-tdt-0.6b-v3", "language": lang}

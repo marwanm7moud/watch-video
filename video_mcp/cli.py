@@ -1,5 +1,5 @@
 """CLI for testing and for use without MCP:
-  video-cli overview <src> [--max-frames N] [--engine E] [--language L]
+  video-cli overview <src> [--max-frames N] [--engine E] [--language L] [--ocr]
   video-cli frames <src> 12:30 13:05 [--low]
   video-cli range <src> 10:00 10:30 [--count 12]
   video-cli transcript <src> [start] [end]
@@ -23,6 +23,7 @@ def build_parser():
     o.add_argument("--max-frames", type=int, default=40)
     o.add_argument("--engine", default="auto", help="auto|subs|parakeet|whisper")
     o.add_argument("--language")
+    o.add_argument("--ocr", action="store_true", help="also read on-screen text (needs watch-video[ocr])")
 
     f = sub.add_parser("frames", help="exact frames at timestamps")
     f.add_argument("src")
@@ -55,7 +56,7 @@ def main(argv=None):
     if a.cmd == "hw":
         print(hw.report())
         return
-    res = {"overview": lambda: core.overview(a.src, a.max_frames, a.engine, a.language),
+    res = {"overview": lambda: core.overview(a.src, a.max_frames, a.engine, a.language, a.ocr),
            "frames": lambda: core.get_frames(a.src, a.ts, not a.low),
            "range": lambda: core.scan_range(a.src, a.start, a.end, a.count),
            "transcript": lambda: core.get_transcript(a.src, a.start, a.end),

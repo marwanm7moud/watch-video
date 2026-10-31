@@ -23,17 +23,43 @@ def _font(size):
     return ImageFont.load_default(size=size)
 
 
-def scan_keyframes(path):
-    """Decode ONLY keyframes (-skip_frame nokey) at tiny size. Returns [(t, thumb)]. ~10-30x faster
-    than decoding every frame."""
-    cmd = [find_bin("ffmpeg"), "-hide_banner", "-threads", "4", "-skip_frame", "nokey", "-i", path, "-an", "-sn",
-           "-vf", f"scale={THUMB}:{THUMB},format=gray,showinfo", "-fps_mode", "passthrough",
+def _decode_thumbs(path, pre_input, vf_head):
+    cmd = [find_bin("ffmpeg"), "-hide_banner", "-threads", "4", *pre_input, "-i", path, "-an", "-sn",
+           "-vf", f"{vf_head}scale={THUMB}:{THUMB},format=gray,showinfo", "-fps_mode", "passthrough",
            "-f", "rawvideo", "-"]
     r = subprocess.run(cmd, capture_output=True, timeout=1800)
     times = [float(m) for m in re.findall(rb"pts_time:\s*([\d.]+)", r.stderr)]
     n = len(r.stdout) // (THUMB * THUMB)
     buf = np.frombuffer(r.stdout[: n * THUMB * THUMB], np.uint8).reshape(n, THUMB, THUMB).astype(np.int16)
     return list(zip(times[:n], buf))
+
+
+def scan_keyframes(path):
+    """Decode ONLY keyframes (-skip_frame nokey) at tiny size. Returns [(t, thumb)]. ~10-30x faster
+    than decoding every frame."""
+    return _decode_thumbs(path, ["-skip_frame", "nokey"], "")
+
+
+def sample_frames(path, interval):
+    """Decode one tiny frame every `interval` seconds. Slower than scan_keyframes (decodes everything)."""
+    return _decode_thumbs(path, [], f"fps=1/{interval:.3f},")
+
+
+def is_sparse(n_keyframes, duration, max_frames):
+    """True when keyframes are too few to cover the video (long-GOP screen recordings: one keyframe
+    every 10-30 s), so scene selection would miss content."""
+    return n_keyframes < min(max_frames, (duration or 0) / 10)
+
+
+def scan(path, duration, max_frames):
+    """Keyframes, topped up with timed samples when the video has too few of them."""
+    kf = scan_keyframes(path)
+    if not is_sparse(len(kf), duration, max_frames):
+        return kf
+    interval = max(2.0, duration / 200)
+    merged = {round(t, 2): f for t, f in sample_frames(path, interval)}
+    merged.update({round(t, 2): f for t, f in kf})
+    return sorted(merged.items())
 
 
 def select(frames, duration, max_frames=40, noise=0.004, window=6, change_share=0.7):
@@ -131,7 +157,7 @@ def extract(inp, times, out_dir, long_side=768, label=True, workers=3, crop=""):
         scale = f"{crop},{scale}"
 
     def one(t):
-        p = os.path.join(out_dir, f"f_{t:09.2f}_{long_side}{'c' if crop else ''}.jpg")
+        p = os.path.join(out_dir, f"f_{t:09.2f}_{long_side}{'c' if crop else ''}{'' if label else 'n'}.jpg")
         if not os.path.exists(p):
             subprocess.run([find_bin("ffmpeg"), "-v", "error", "-y", "-threads", "1", "-ss", f"{t:.3f}", "-i", inp,
                             "-frames:v", "1", "-vf", scale, "-q:v", "3", "-threads", "1", p], timeout=120,
@@ -174,10 +200,10 @@ def keyframes(video, max_frames=40):
     cache = os.path.join(video.dir, f"keyframes_{max_frames}.json")
     if os.path.exists(cache):
         return [tuple(x) for x in json.load(open(cache))]
-    scan = video.scan_file()
+    scan_path = video.scan_file()
     dur = video.meta().get("duration") or 0
-    times = select(scan_keyframes(scan), dur, max_frames=max_frames)
-    out = extract(scan, times, os.path.join(video.dir, "frames"), crop=crop_for(video))
+    times = select(scan(scan_path, dur, max_frames), dur, max_frames=max_frames)
+    out = extract(scan_path, times, os.path.join(video.dir, "frames"), crop=crop_for(video))
     json.dump(out, open(cache, "w"))
     return out
 
