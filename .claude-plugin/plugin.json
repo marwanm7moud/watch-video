@@ -14,7 +14,7 @@
   "mcpServers": {
     "video": {
       "command": "uvx",
-      "args": ["--from", "watch-video", "video-mcp"]
+      "args": ["--from", "watch-video-mcp", "video-mcp"]
     }
   }
 }

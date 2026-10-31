@@ -72,14 +72,14 @@ Installs the MCP server and the skill together. Needs [uv](https://docs.astral.s
 ### Any agent: package, server, skill
 
 ```bash
-pipx install watch-video          # or: uv tool install watch-video / pip install watch-video
+pipx install watch-video-mcp          # or: uv tool install watch-video-mcp / pip install watch-video-mcp
 # optional extras: Whisper (non-European languages / GPU) and OCR (on-screen text as text)
-pipx install "watch-video[whisper,ocr]"
+pipx install "watch-video-mcp[whisper,ocr]"
 # latest from GitHub instead of PyPI:
 pip install git+https://github.com/marwanm7moud/watch-video
 ```
 
-No install needed to try the CLI: `uvx --from watch-video video-cli hw`.
+No install needed to try the CLI: `uvx --from watch-video-mcp video-cli hw`.
 
 Install ffmpeg with `winget install Gyan.FFmpeg` (Windows), `brew install ffmpeg` (macOS) or
 `sudo apt install ffmpeg` (Linux). The first transcription downloads the Parakeet model (about 650 MB).

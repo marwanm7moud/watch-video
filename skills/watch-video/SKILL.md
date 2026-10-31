@@ -13,8 +13,8 @@ Parakeet (25 European languages, CPU), else Whisper (other languages or GPU).
 Run `video-cli --version`.
 
 - Works: continue.
-- `command not found`: install with `pipx install watch-video` (or `uv tool install watch-video`,
-  or `pip install watch-video`). Then run `video-cli --version` again.
+- `command not found`: install with `pipx install watch-video-mcp` (or `uv tool install watch-video-mcp`,
+  or `pip install watch-video-mcp`). Then run `video-cli --version` again.
 - Run `video-cli hw`. If `ffmpeg` or `ffprobe` is missing, tell the user to install it
   (`winget install Gyan.FFmpeg`, `brew install ffmpeg`, `sudo apt install ffmpeg`). Do not continue without it.
 - First transcription without subtitles downloads a ~650 MB model. Tell the user before starting.
@@ -33,7 +33,7 @@ CLI output ends with `IMAGE: <path>` lines. Read each image path to see the fram
    - Mostly-talk video (podcast, lecture): `--max-frames 16`.
    - Visual-heavy (tutorial, demo, chart walkthrough): keep the default 40, or use 80.
    - Slides, code or UI on screen: add `--ocr`. It lists the on-screen text per keyframe as plain text
-     (new lines only), cheaper and more exact than reading images. Needs `pipx install "watch-video[ocr]"`;
+     (new lines only), cheaper and more exact than reading images. Needs `pipx install "watch-video-mcp[ocr]"`;
      `video-cli hw` shows whether OCR is installed. OCR drops leading spaces and may split words, so
      confirm indentation or exact code with a hi-res `frames` call.
 2. Need to read text, code, UI or chart values at a moment: `video-cli frames <src> 12:30 13:05`.
@@ -65,7 +65,7 @@ Read `references/recipes.md` for the output format of each task before you write
 - Transcription assumes English. Parakeet also handles 24 other European languages (French, German,
   Spanish, Russian, Ukrainian...): pass `--language <code>`, e.g. `--language de`. For other languages
   (Arabic, Chinese, Japanese, Hindi...) tell the user, then use `--language <code>` or `--language auto`
-  (Whisper, needs `watch-video[whisper]`, heavy on CPU; prefer a GPU machine).
+  (Whisper, needs `watch-video-mcp[whisper]`, heavy on CPU; prefer a GPU machine).
 - Only process videos the user is allowed to access.
 
 ## Network and data

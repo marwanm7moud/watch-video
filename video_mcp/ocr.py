@@ -1,4 +1,4 @@
-"""Optional on-screen text extraction (RapidOCR, ONNX, CPU). Install with `pip install watch-video[ocr]`."""
+"""Optional on-screen text extraction (RapidOCR, ONNX, CPU). Install with `pip install watch-video-mcp[ocr]`."""
 import json
 import os
 
@@ -59,7 +59,7 @@ def cached(video):
 def screen_text(video, times, long_side=1280):
     """OCR the given timestamps (cached). Frames are grabbed unlabelled at hi-res so text is readable."""
     if not available():
-        raise RuntimeError('OCR is not installed. Run: pip install "watch-video[ocr]"')
+        raise RuntimeError('OCR is not installed. Run: pip install "watch-video-mcp[ocr]"')
     cache = os.path.join(video.dir, "ocr.json")
     done = json.load(open(cache, encoding="utf-8")) if os.path.exists(cache) else {}
     todo = [t for t in times if f"{t:.2f}" not in done]

@@ -23,7 +23,7 @@ def build_parser():
     o.add_argument("--max-frames", type=int, default=40)
     o.add_argument("--engine", default="auto", help="auto|subs|parakeet|whisper")
     o.add_argument("--language")
-    o.add_argument("--ocr", action="store_true", help="also read on-screen text (needs watch-video[ocr])")
+    o.add_argument("--ocr", action="store_true", help="also read on-screen text (needs watch-video-mcp[ocr])")
 
     f = sub.add_parser("frames", help="exact frames at timestamps")
     f.add_argument("src")

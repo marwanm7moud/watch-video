@@ -124,7 +124,7 @@ def report():
         f"ffmpeg: {ver('ffmpeg')}",
         f"ffprobe: {ver('ffprobe')}",
         f"Parakeet (onnx-asr): {'yes' if parakeet_available() else 'no'}",
-        f"OCR (rapidocr): {'yes' if ocr_available() else 'no (pip install watch-video[ocr])'}",
+        f"OCR (rapidocr): {'yes' if ocr_available() else 'no (pip install watch-video-mcp[ocr])'}",
         f"Profile: {p}",
     ]
     return "\n".join(lines)

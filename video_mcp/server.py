@@ -31,7 +31,7 @@ def video_overview(source: str, max_frames: int = 40, engine: str = "auto", lang
     (Arabic, Chinese, Japanese, Hindi...) use Whisper, which is heavy on CPU.
     Cached: repeat calls are instant. First run on CPU without subtitles can take a few minutes
     for long videos. ocr=True also returns the text visible on screen (code, slides, UI) as text; needs
-    the watch-video[ocr] extra."""
+    the watch-video-mcp[ocr] extra."""
     return _out(core.overview(source, max_frames, engine, language, ocr))
 
 
