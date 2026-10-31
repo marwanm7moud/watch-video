@@ -50,6 +50,14 @@ def scan_range(source: str, start: str, end: str, count: int = 12):
 
 
 @mcp.tool()
+def find_cuts(source: str, start: str = "0", end: str | None = None, threshold: float = 0.2):
+    """Hard cuts (scene changes) between start and end, with cuts per minute. Use for pacing and edit
+    rhythm, or to find where shots change. Lower threshold (0.1) for graphics, slides or screencasts,
+    where a cut changes less of the frame."""
+    return core.find_cuts(source, start, end, threshold)["text"]
+
+
+@mcp.tool()
 def get_transcript(source: str, start: str = "0", end: str | None = None):
     """Transcript slice between start and end."""
     return core.get_transcript(source, start, end)["text"]

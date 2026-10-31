@@ -45,6 +45,20 @@ def sample_frames(path, interval):
     return _decode_thumbs(path, [], f"fps=1/{interval:.3f},")
 
 
+def scene_cuts(path, start=0.0, end=None, threshold=0.2):
+    """Hard cuts in [start, end] from ffmpeg's scene-change score, decoded at 160 px. Returns [t]."""
+    span = ["-t", f"{end - start:.3f}"] if end else []
+    cmd = [find_bin("ffmpeg"), "-hide_banner", "-ss", f"{start:.3f}", *span, "-i", path, "-an", "-sn",
+           "-vf", f"scale=160:-2,select='gt(scene,{threshold})',showinfo", "-f", "null", "-"]
+    r = subprocess.run(cmd, capture_output=True, timeout=1800)
+    cuts = []
+    for m in re.findall(rb"pts_time:\s*([\d.]+)", r.stderr):
+        t = round(start + float(m), 2)
+        if not cuts or t - cuts[-1] >= 0.5:  # one cut can score high on two consecutive frames
+            cuts.append(t)
+    return cuts
+
+
 def is_sparse(n_keyframes, duration, max_frames):
     """True when keyframes are too few to cover the video (long-GOP screen recordings: one keyframe
     every 10-30 s), so scene selection would miss content."""
@@ -113,13 +127,14 @@ def select(frames, duration, max_frames=40, noise=0.004, window=6, change_share=
 
 
 def _label(img, t):
-    d = ImageDraw.Draw(img)
+    """Timestamp in a black strip above the frame, so it never hides on-screen text."""
     f = _font(max(14, img.height // 22))
     txt = fmt_ts(t)
-    x0, y0, x1, y1 = d.textbbox((0, 0), txt, font=f)
-    d.rectangle([0, 0, x1 + 10, y1 + 8], fill=(0, 0, 0))
-    d.text((5, 3), txt, fill=(255, 255, 0), font=f)
-    return img
+    _, _, _, y1 = ImageDraw.Draw(img).textbbox((0, 0), txt, font=f)
+    out = Image.new("RGB", (img.width, img.height + y1 + 8), (0, 0, 0))
+    out.paste(img, (0, y1 + 8))
+    ImageDraw.Draw(out).text((5, 3), txt, fill=(255, 255, 0), font=f)
+    return out
 
 
 def detect_crop(path, duration):
@@ -157,7 +172,7 @@ def extract(inp, times, out_dir, long_side=768, label=True, workers=3, crop=""):
         scale = f"{crop},{scale}"
 
     def one(t):
-        p = os.path.join(out_dir, f"f_{t:09.2f}_{long_side}{'c' if crop else ''}{'' if label else 'n'}.jpg")
+        p = os.path.join(out_dir, f"f_{t:09.2f}_{long_side}{'c' if crop else ''}{'s' if label else 'n'}.jpg")
         if not os.path.exists(p):
             subprocess.run([find_bin("ffmpeg"), "-v", "error", "-y", "-threads", "1", "-ss", f"{t:.3f}", "-i", inp,
                             "-frames:v", "1", "-vf", scale, "-q:v", "3", "-threads", "1", p], timeout=120,

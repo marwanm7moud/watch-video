@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from video_mcp.core import parse_ts, search_transcript
+from video_mcp.core import _in_video, parse_ts, search_transcript
 from video_mcp.source import is_url
 from video_mcp.transcribe import as_text, fmt_ts
 
@@ -28,6 +28,14 @@ def test_as_text_merges_close_fragments_only():
     segs = [{"start": 0, "end": 1, "text": "hello"}, {"start": 1.2, "end": 2, "text": "world"},
             {"start": 10, "end": 11, "text": "later"}]
     assert as_text(segs) == "[00:00] hello world\n[00:10] later"
+
+
+def test_in_video_keeps_seeks_inside_duration():
+    v = SimpleNamespace(meta=lambda: {"duration": 22.0})
+    assert _in_video(v, 22.0) == pytest.approx(21.9)
+    assert _in_video(v, -3) == 0.0
+    assert _in_video(v, 10) == 10
+    assert _in_video(SimpleNamespace(meta=lambda: {}), 99) == 99
 
 
 def _fake_video(monkeypatch, tmp_path, texts):

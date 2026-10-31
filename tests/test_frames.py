@@ -8,6 +8,13 @@ from video_mcp import frames as fr
 from video_mcp.hw import find_bin
 
 
+def test_label_adds_strip_without_covering_frame():
+    img = Image.new("RGB", (640, 360), (255, 0, 0))
+    out = fr._label(img, 65)
+    assert out.width == 640 and out.height > 360
+    assert out.getpixel((2, out.height - 360)) == (255, 0, 0)  # frame's top-left pixel untouched
+
+
 def test_select_picks_changes_and_respects_budget():
     # 30 keyframes: three visually distinct "slides", each repeated 10 times
     thumbs = [np.full((fr.THUMB, fr.THUMB), v, np.int16) for v in (0, 120, 240) for _ in range(10)]
@@ -42,6 +49,20 @@ def test_scan_extract_and_contact_sheet(clip, tmp_path):
     assert max(Image.open(out[0][1]).size) == 256
     sheets = fr.contact_sheets(out, str(tmp_path / "s"))
     assert len(sheets) == 1
+
+
+def test_scene_cuts_finds_hard_cuts(tmp_path):
+    try:
+        ffmpeg = find_bin("ffmpeg")
+    except FileNotFoundError:
+        pytest.skip("ffmpeg not installed")
+    path = str(tmp_path / "cuts.mp4")
+    # three 2 s solid-colour shots: hard cuts at 2 s and 4 s
+    subprocess.run([ffmpeg, "-v", "error", "-y", *[a for c in ("red", "blue", "green") for a in
+                    ("-f", "lavfi", "-i", f"color=c={c}:s=160x120:r=10:d=2")],
+                    "-filter_complex", "concat=n=3:v=1:a=0", "-pix_fmt", "yuv420p", path], check=True)
+    assert [round(t) for t in fr.scene_cuts(path)] == [2, 4]
+    assert [round(t) for t in fr.scene_cuts(path, 3, 6)] == [4]
 
 
 def test_is_sparse():

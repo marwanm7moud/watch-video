@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- New `find_cuts` tool / `video-cli cuts`: hard cuts (ffmpeg scene score) and cuts per minute over a
+  range, for pacing analysis and for finding where the screen changes.
+- Frame timestamps are drawn in a strip above the image instead of over it, so they no longer hide
+  on-screen text in the top-left corner.
+- `frames` and `range` clamp timestamps inside the video: a range ending at the exact duration now
+  returns all requested frames instead of dropping the last one.
+- `overview --ocr` reports OCR time, and the total time now includes it.
+
 ## 0.2.0
 
 - Skill is now CLI-first and agent-agnostic (works with or without the MCP server), with a setup

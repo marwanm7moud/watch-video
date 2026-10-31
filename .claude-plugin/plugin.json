@@ -1,7 +1,7 @@
 {
   "name": "watch-video",
   "displayName": "Watch Video",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Let Claude watch a video (local file or YouTube and 1500+ sites): timestamped transcript, scene-selected keyframes and exact frames on demand. Fully local, no API keys.",
   "author": {
     "name": "Marwan Mahmoud",

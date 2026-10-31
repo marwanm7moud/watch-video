@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "watch-video-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "MCP server and Claude skill that let an AI watch videos: timestamped transcript plus scene-selected keyframes, from local files or any yt-dlp URL."
 readme = "README.md"
 license = "MIT"

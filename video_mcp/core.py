@@ -48,11 +48,15 @@ def overview(src, max_frames=40, engine="auto", language=None, with_ocr=False):
     head.append(f"transcript: {tr['engine']}, language={tr.get('language')}, {len(tr['segments'])} segments, "
                 f"took {tr.get('seconds')}s")
     head.append(f"keyframes: {len(kf)} scene-selected at " + ", ".join(fmt_ts(t) for t, _ in kf))
-    head.append(f"contact sheets: {len(sheets)} (timestamp in each cell's top-left)")
+    head.append(f"contact sheets: {len(sheets)} (timestamp above each cell)")
+    screen = None
+    if with_ocr:
+        t1 = time.time()
+        screen = ocr.format_ocr(ocr.screen_text(v, [t for t, _ in kf]))
+        head.append(f"ocr: {time.time() - t1:.1f}s")
     head.append(f"total time: {time.time() - t0:.1f}s")
     body = "\n".join(head) + "\n\n## Transcript\n" + (text or "(no speech)")
     if with_ocr:
-        screen = ocr.format_ocr(ocr.screen_text(v, [t for t, _ in kf]))
         body += "\n\n## On-screen text (OCR, new lines per keyframe)\n" + (screen or "(none detected)")
     return {"text": body, "images": sheets,
             "timings": {"transcribe_s": tr.get("seconds"), "total_s": round(time.time() - t0, 1)}}
@@ -68,10 +72,16 @@ def parse_ts(x):
     return s
 
 
+def _in_video(v, t):
+    """Keep a seek inside the video: a seek at (or past) the very end returns no frame."""
+    dur = v.meta().get("duration")
+    return max(0.0, min(t, dur - 0.1)) if dur else t
+
+
 def get_frames(src, timestamps, hi_res=True):
     """Exact frames at given timestamps. hi_res=1280px (read code/text), else 768px."""
     v = get_video(src)
-    times = [parse_ts(t) for t in timestamps][:20]
+    times = [_in_video(v, parse_ts(t)) for t in timestamps][:20]
     inp = v.hires_input() if hi_res else (v.scan_file() if v.url else v.local_path)
     out = fr.extract(inp, times, os.path.join(v.dir, "frames"), long_side=1280 if hi_res else 768,
                      crop=fr.crop_for(v))
@@ -81,7 +91,7 @@ def get_frames(src, timestamps, hi_res=True):
 def scan_range(src, start, end, count=12):
     """Evenly sampled frames over [start, end] tiled into one contact sheet — for action/motion."""
     v = get_video(src)
-    a, b = parse_ts(start), parse_ts(end)
+    a, b = _in_video(v, parse_ts(start)), _in_video(v, parse_ts(end))
     count = max(2, min(int(count), 40))
     times = [round(a + (b - a) * i / (count - 1), 2) for i in range(count)]
     inp = v.scan_file() if v.url else v.local_path
@@ -90,6 +100,20 @@ def scan_range(src, start, end, count=12):
     sheets = fr.contact_sheets(out, d)
     return {"text": f"{len(out)} frames {fmt_ts(a)}-{fmt_ts(b)} every {(b - a) / (count - 1):.1f}s",
             "images": sheets}
+
+
+def find_cuts(src, start="0", end=None, threshold=0.2):
+    """Hard cuts (scene changes) between start and end, with cuts per minute — for pacing analysis."""
+    v = get_video(src)
+    a = parse_ts(start)
+    b = _in_video(v, parse_ts(end)) if end is not None else v.meta().get("duration")
+    inp = v.scan_file() if v.url else v.local_path
+    cuts = fr.scene_cuts(inp, a, b, float(threshold))
+    span = (b - a) if b else (cuts[-1] - a if cuts else 0)
+    rate = f", {len(cuts) / span * 60:.1f} per minute" if span > 0 else ""
+    times = ", ".join(f"{fmt_ts(t)}.{int(t * 10) % 10}" for t in cuts[:300])
+    return {"text": f"{len(cuts)} cuts {fmt_ts(a)}-{fmt_ts(b or a + span)}{rate} (threshold {threshold})\n"
+                    + (times or "(no hard cuts)"), "images": []}
 
 
 def get_transcript(src, start=0, end=None, engine="auto", language=None):

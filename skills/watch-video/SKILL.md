@@ -20,7 +20,7 @@ Run `video-cli --version`.
 - First transcription without subtitles downloads a ~650 MB model. Tell the user before starting.
 
 If the `video` MCP server is connected (tools named `video_overview`, `get_frames`, `scan_range`,
-`get_transcript`, `search_transcript`, with an `mcp__video__` or `mcp__plugin_watch-video_video__` prefix),
+`find_cuts`, `get_transcript`, `search_transcript`, with an `mcp__video__` or `mcp__plugin_watch-video_video__` prefix),
 call those tools instead of the CLI. The arguments are identical.
 
 ## Workflow (cheap first, detail on demand)
@@ -39,6 +39,8 @@ CLI output ends with `IMAGE: <path>` lines. Read each image path to see the fram
 2. Need to read text, code, UI or chart values at a moment: `video-cli frames <src> 12:30 13:05`.
    Pick timestamps from the transcript or the contact-sheet labels. Batch several in one call.
 3. Need to follow motion or a step-by-step action: `video-cli range <src> 10:00 10:30 --count 12`.
+   Need where shots or screens change, or the editing pace: `video-cli cuts <src> [start] [end]`
+   (hard cuts + cuts per minute; `--threshold 0.1` for slides, screencasts or graphics).
 4. "Where do they talk about X?": `video-cli search <src> "x"` (any word matches, exact phrase ranked
    first), then `frames` at the hits. After an `--ocr` overview it also lists matching on-screen text.
    `video-cli transcript <src> 10:00 12:00` returns a slice.

@@ -2,6 +2,7 @@
   video-cli overview <src> [--max-frames N] [--engine E] [--language L] [--ocr]
   video-cli frames <src> 12:30 13:05 [--low]
   video-cli range <src> 10:00 10:30 [--count 12]
+  video-cli cuts <src> [start] [end] [--threshold 0.2]
   video-cli transcript <src> [start] [end]
   video-cli search <src> <query>
   video-cli hw
@@ -36,6 +37,12 @@ def build_parser():
     r.add_argument("end")
     r.add_argument("--count", type=int, default=12)
 
+    c = sub.add_parser("cuts", help="hard cuts and cuts per minute (pacing)")
+    c.add_argument("src")
+    c.add_argument("start", nargs="?", default="0")
+    c.add_argument("end", nargs="?")
+    c.add_argument("--threshold", type=float, default=0.2)
+
     t = sub.add_parser("transcript", help="transcript slice")
     t.add_argument("src")
     t.add_argument("start", nargs="?", default="0")
@@ -59,6 +66,7 @@ def main(argv=None):
     res = {"overview": lambda: core.overview(a.src, a.max_frames, a.engine, a.language, a.ocr),
            "frames": lambda: core.get_frames(a.src, a.ts, not a.low),
            "range": lambda: core.scan_range(a.src, a.start, a.end, a.count),
+           "cuts": lambda: core.find_cuts(a.src, a.start, a.end, a.threshold),
            "transcript": lambda: core.get_transcript(a.src, a.start, a.end),
            "search": lambda: core.search_transcript(a.src, a.query)}[a.cmd]()
     print(res["text"])

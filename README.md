@@ -39,7 +39,7 @@ their really long trunks (00:05). That is the whole video (00:16).
 
 It ships as two parts:
 
-- **`video` MCP server** with six tools (below).
+- **`video` MCP server** with seven tools (below).
 - **`watch-video` skill** that teaches Claude the cheap-first workflow: overview, then frames, then ranges.
 
 ## How it works
@@ -121,6 +121,7 @@ Then ask Claude: *"Watch https://youtu.be/... and summarize it"*, or *"At what p
 | `video_overview(source, max_frames=40, ocr=False)` | Start here: metadata, chapters, full transcript, contact sheets. `ocr=True` adds on-screen text. |
 | `get_frames(source, timestamps, hi_res=True)` | Exact frames (`"12:30"`, `"1:02:05"` or seconds), up to 20. |
 | `scan_range(source, start, end, count=12)` | Evenly spaced frames in one sheet, to follow motion or a demo. |
+| `find_cuts(source, start, end, threshold=0.2)` | Hard cuts (shot or screen changes) and cuts per minute, for pacing. |
 | `get_transcript(source, start, end)` | Transcript slice. |
 | `search_transcript(source, query)` | Timestamped hits for any of the words, exact phrase first; plus on-screen text after an `ocr=True` overview. |
 | `check_hardware()` | Detected tools, GPU and the transcription profile in use. |
@@ -134,6 +135,7 @@ video-cli overview video.mp4 --max-frames 16
 video-cli overview demo.mp4 --ocr          # also read code/slides on screen
 video-cli frames https://youtu.be/... 12:30 13:05
 video-cli range video.mp4 10:00 10:30 --count 12
+video-cli cuts ad.mp4                       # hard cuts + cuts per minute
 video-cli search video.mp4 "stop loss"
 video-cli hw
 ```
