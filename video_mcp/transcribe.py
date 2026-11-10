@@ -3,7 +3,7 @@ import json
 import os
 import time
 
-from .hw import profile
+from .hw import disable_cuda, profile
 
 _models = {}
 
@@ -76,6 +76,21 @@ def _run_parakeet(wav):
             for r in _models["parakeet"].recognize(wav) if r.text.strip()]
 
 
+def _asr(video, engine, language, meta):
+    wav = video.audio_file()
+    prompt = " ".join(filter(None, [meta.get("title"), (meta.get("description") or "")[:300]]))
+    # The given language is trusted (no Whisper load just to detect); pass language="auto" to detect.
+    lang, prob = _detect_language(wav) if language == "auto" else (language, 1.0)
+    use_parakeet = engine == "parakeet" or (
+        engine == "auto" and profile()["parakeet"] and lang in PARAKEET_LANGS and prob > 0.8)
+    if use_parakeet:
+        # No silent Whisper fallback on CPU: it is far heavier and can freeze a desktop.
+        return {"segments": _run_parakeet(wav), "engine": "parakeet-tdt-0.6b-v3", "language": lang}
+    segs, lang = _run_whisper(wav, lang, prompt)
+    p = profile()
+    return {"segments": segs, "engine": f"faster-whisper {p['whisper_model']} ({p['device']})", "language": lang}
+
+
 def transcribe(video, engine="auto", language=None):
     """Returns {"segments":[...], "engine":..., "language":..., "seconds":...}. Cached per video+engine."""
     language = language or os.environ.get("VIDEO_MCP_LANG", "en")
@@ -91,20 +106,14 @@ def transcribe(video, engine="auto", language=None):
         if meta.get("has_audio") is False:
             res = {"segments": [], "engine": "none (no audio track)", "language": None}
         else:
-            wav = video.audio_file()
-            prompt = " ".join(filter(None, [meta.get("title"), (meta.get("description") or "")[:300]]))
-            # The given language is trusted (no Whisper load just to detect); pass language="auto" to detect.
-            lang, prob = _detect_language(wav) if language == "auto" else (language, 1.0)
-            use_parakeet = engine == "parakeet" or (
-                engine == "auto" and profile()["parakeet"] and lang in PARAKEET_LANGS and prob > 0.8)
-            if use_parakeet:
-                # No silent Whisper fallback on CPU: it is far heavier and can freeze a desktop.
-                res = {"segments": _run_parakeet(wav), "engine": "parakeet-tdt-0.6b-v3", "language": lang}
-            if not res:
-                segs, lang = _run_whisper(wav, lang, prompt)
-                p = profile()
-                res = {"segments": segs, "engine": f"faster-whisper {p['whisper_model']} ({p['device']})",
-                       "language": lang}
+            try:
+                res = _asr(video, engine, language, meta)
+            except RuntimeError as e:
+                if not disable_cuda(e):
+                    raise
+                # Pick the engine again on the CPU profile: English then goes to Parakeet, not CPU Whisper.
+                _models.pop("whisper", None)
+                res = _asr(video, engine, language, meta)
     res["seconds"] = round(time.time() - t0, 1)
     json.dump(res, open(cache, "w", encoding="utf-8"), ensure_ascii=False)
     return res
