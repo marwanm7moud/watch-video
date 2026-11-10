@@ -4,6 +4,9 @@ import glob
 import os
 import shutil
 import subprocess
+import sys
+
+_cuda_error = None  # set once the GPU turned out unusable (CUDA libraries missing); profile() then uses the CPU
 
 
 @functools.lru_cache(None)
@@ -85,7 +88,7 @@ def be_nice():
 @functools.lru_cache(None)
 def profile():
     """Return the transcription profile for this machine."""
-    gpu = cuda_devices() > 0
+    gpu = cuda_devices() > 0 and _cuda_error is None
     cpus = os.cpu_count() or 4
     if gpu:
         return {
@@ -105,6 +108,21 @@ def profile():
     }
 
 
+def disable_cuda(err):
+    """ctranslate2 counts the GPU through the driver but loads cuBLAS only at the first inference, so a
+    machine without the CUDA runtime libraries gets the GPU profile and then fails with
+    "Library cublas64_12.dll is not found or cannot be loaded". On that error, switch this process to
+    the CPU profile and return True; return False for any other error, which the caller re-raises."""
+    global _cuda_error
+    if _cuda_error or profile()["device"] != "cuda" or "cannot be loaded" not in str(err):
+        return False
+    _cuda_error = str(err)
+    profile.cache_clear()
+    print(f"watch-video: GPU found but not usable ({err}); transcribing on CPU. Install the CUDA libraries "
+          "ctranslate2 needs, or set CUDA_VISIBLE_DEVICES=-1 to skip the GPU.", file=sys.stderr)
+    return True
+
+
 def report():
     def ver(b):
         try:
@@ -118,7 +136,7 @@ def report():
     p = profile()
     lines = [
         f"CPU threads: {os.cpu_count()}",
-        f"CUDA GPUs: {cuda_devices()}",
+        f"CUDA GPUs: {cuda_devices()}" + (f" (not used: {_cuda_error})" if _cuda_error else ""),
         f"Free RAM: {free_ram_gb():.1f} GB",
         f"CPU ISA for Whisper: {os.environ.get('CT2_FORCE_CPU_ISA', 'auto (AVX-512 if available)')}",
         f"ffmpeg: {ver('ffmpeg')}",
