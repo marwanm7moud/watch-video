@@ -2,6 +2,9 @@
 import json
 import os
 import time
+import wave
+
+import numpy as np
 
 from .hw import profile
 
@@ -27,11 +30,19 @@ def _whisper():
     return _models["whisper"]
 
 
+def _load_wav(path):
+    """The 16 kHz mono 16-bit wav from Video.audio_file() as float32 in [-1, 1), the array Whisper takes.
+    Handing Whisper an array skips faster-whisper's PyAV decoder, which breaks on PyAV 19
+    (faster-whisper 1.2.1 still passes the removed `metadata_errors` argument to av.open)."""
+    with wave.open(path, "rb") as w:
+        if (w.getframerate(), w.getnchannels(), w.getsampwidth()) != (16000, 1, 2):
+            raise ValueError(f"{path}: expected 16 kHz mono 16-bit PCM")
+        return np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768.0
+
+
 def _detect_language(wav):
     model, _ = _whisper()
-    from faster_whisper.audio import decode_audio
-    audio = decode_audio(wav, sampling_rate=16000)
-    lang, prob, _ = model.detect_language(audio, vad_filter=True, language_detection_segments=4)
+    lang, prob, _ = model.detect_language(_load_wav(wav), vad_filter=True, language_detection_segments=4)
     return lang, prob
 
 
@@ -39,7 +50,7 @@ def _run_whisper(wav, language, prompt):
     p = profile()
     _, batched = _whisper()
     segs, info = batched.transcribe(
-        wav, language=language, beam_size=p["beam_size"], batch_size=p["batch_size"],
+        _load_wav(wav), language=language, beam_size=p["beam_size"], batch_size=p["batch_size"],
         vad_filter=True, initial_prompt=prompt or None, condition_on_previous_text=False)
     out = [{"start": s.start, "end": s.end, "text": s.text.strip()} for s in segs
            if s.text.strip() and not _hallucination(s)]
